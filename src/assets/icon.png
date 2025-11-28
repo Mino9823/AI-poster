@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SRC="/Users/jangminho/Downloads/icon.png"
+DST="/Users/jangminho/Desktop/ai-poster/assets/icon.png"
+
+mkdir -p "$(dirname "$DST")"
+
+if [[ -f "$SRC" ]]; then
+    cp -v "$SRC" "$DST"
+    echo "Copied: $SRC -> $DST"
+    exit 0
+else
+    echo "Source not found: $SRC" >&2
+    exit 1
+fi
