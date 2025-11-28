@@ -15,10 +15,31 @@ const backgroundStyleMap: { [key: string]: string } = {
   "AI 감성 배경": "emotional",
 };
 
+const rgbToHex = (rgbString: string) => {
+  const [r, g, b] = rgbString.split(',').map(Number);
+  const toHex = (c: number) => `0${c.toString(16)}`.slice(-2);
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+};
+
+const hexToRgb = (hex: string) => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) {
+    return '0,0,0';
+  }
+  const r = parseInt(result[1], 16);
+  const g = parseInt(result[2], 16);
+  const b = parseInt(result[3], 16);
+  return `${r},${g},${b}`;
+};
+
 const QuotePosterPage: React.FC = () => {
     const [topic, setTopic] = useState("");
     const [showOptions, setShowOptions] = useState(false);
-    const [fontStyle, setFontStyle] = useState("고딕");
+    const [isRotated, setIsRotated] = useState(false);
+    const [fontStyle, setFontStyle] = useState("Gothic");
+    const [fontSize, setFontSize] = useState('60');
+    const [textColor, setTextColor] = useState('255,255,255');
+    const [textPosition, setTextPosition] = useState('center');
     const [startIndex, setStartIndex] = useState(0);
       const [selectedFile, setSelectedFile] = useState<File | null>(null);
         const [apiResponse, setApiResponse] = useState<any | null>(null);
@@ -54,37 +75,55 @@ const QuotePosterPage: React.FC = () => {
         }
       })();
     
-      const fontOptions = ["손글씨", "붓글씨", "고딕"];
-    
+      const fontStyleOptions = ["Pen", "Brush", "Gothic", "Seunghun", "Princess", "Gwangbok", "Memoment", "Ria"];
+      const textPositionOptions = ["center", "top", "bottom"];
+
+      const fontStyleToApiMap: { [key: string]: string } = {
+        "Gothic": "gothic",
+        "Pen": "pen",
+        "Brush": "brush",
+        "Seunghun": "seunghun",
+        "Princess": "princess",
+        "Gwangbok": "gwangbok",
+        "Memoment": "memoment",
+        "Ria":"ria"
+      };
+
       const handlePresetClick = (text: string) => {
         setSelectedBackgroundPreset(text);
       };
-    
-      const handleOptionClick = (style: string) => {
-        setFontStyle(style);
-        setShowOptions(false);
-        console.log("Selected Font:", style);
+
+      const handleTextPositionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        setTextPosition(e.target.value);
       };
     
       const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         setApiResponse(null);
+        setShowOptions(false); // 폰트 설정 화면 숨기기
+        setIsRotated(false); // 톱니바퀴 아이콘 회전 초기화
+
+        if (!selectedBackgroundPreset) {
+          alert("테마를 선택해주세요.");
+          setIsLoading(false);
+          return;
+        }
     
         // API 주소 정의
-        const API_URL = 'http://133.186.223.103:8000/sns/api/generate-calligraphy' // 👈 실제 API 엔드포인트에 맞게 경로를 수정하세요.
+        const API_URL = 'http://133.186.223.103:8000/sns/api/generate-calligraphy' 
     
         // 1. FormData 객체 생성
         const formData = new FormData();
         formData.append('mode', "calligraphy");
         formData.append('topic', topic);
-        formData.append('fontStyle', fontStyle);
+        formData.append('font_style', fontStyleToApiMap[fontStyle] || "gothic"); // API 형식에 맞게 변환
         const mappedBackgroundStyle = selectedBackgroundPreset
           ? backgroundStyleMap[selectedBackgroundPreset] || "poster"
           : "poster";
         formData.append('background_style', mappedBackgroundStyle);
-        formData.append('font_size', '60');
-        formData.append('text_color','255,255,255');
+        formData.append('font_size', fontSize);
+        formData.append('text_color', textColor);
     
         // 2. 파일이 선택되었다면 FormData에 추가
         if (selectedFile) {
@@ -125,14 +164,6 @@ const QuotePosterPage: React.FC = () => {
     <PageWrapper>
       <GradientBg />
       <Content>
-      <IconCircle>
-      {/* 2. import 한 변수명(iconSrc)을 src에 사용 */}
-        <img 
-          src={iconSrc} // 👈 import 된 변수 사용
-          alt="AI 명언 포스터 생성기 아이콘" 
-          style={{ width: '60%', height: '60%', objectFit: 'contain' }} 
-        />
-      </IconCircle>
         <Title>AI 명언 포스터 생성기</Title>
         <Subtitle>
           당신의 감정에 맞는 완벽한 명언을 찾아드립니다
@@ -140,18 +171,73 @@ const QuotePosterPage: React.FC = () => {
 
         <FormCard onSubmit={handleSubmit}>
           <InputWrapper>
-          
             {showOptions && (
               <OptionMenu>
-                {fontOptions.map((style) => (
-                  <OptionItem 
-                    key={style}
-                    onClick={() => handleOptionClick(style)}
-                    $isActive={fontStyle === style} 
-                  >
-                    {style}
-                  </OptionItem>
-                ))}
+                  <ReferenceGrid>
+                      {/* 폰트 스타일 (Select 드롭다운) */}
+                      <SettingBlock>
+                          <label>폰트 스타일</label>
+                          <CustomSelect 
+                            value={fontStyle} 
+                            onChange={(e) => setFontStyle(e.target.value)}
+                          >
+                              {fontStyleOptions.map(option => (
+                                  <option key={option} value={option}>{option}</option>
+                              ))}
+                          </CustomSelect>
+                      </SettingBlock>
+
+                      {/* 폰트 크기 (Input Text) */}
+                      <SettingBlock>
+                          <label>폰트 크기</label>
+                          <input 
+                            type="text" 
+                            value={fontSize} 
+                            onChange={(e) => setFontSize(e.target.value)} 
+                          />
+                      </SettingBlock>
+
+                      {/* 텍스트 색상 (Color Picker + RGB display) */}
+                      <SettingBlock>
+                          <label>텍스트 색상</label>
+                          <ColorInputWrapper>
+                              <input 
+                                type="color" 
+                                value={rgbToHex(textColor)} 
+                                onChange={(e) => setTextColor(hexToRgb(e.target.value))} 
+                              />
+                              <ColorDisplay>{textColor}</ColorDisplay>
+                          </ColorInputWrapper>
+                      </SettingBlock>
+                  </ReferenceGrid>
+                  
+                  <Divider />
+
+                  <ReferenceGrid>
+                      {/* 텍스트 위치 (Select 드롭다운) */}
+                      <SettingBlock>
+                          <label>텍스트 위치</label>
+                          <CustomSelect 
+                            value={textPosition} 
+                            onChange={handleTextPositionChange}
+                          >
+                              {textPositionOptions.map(option => (
+                                  <option key={option} value={option}>{option}</option>
+                              ))}
+                          </CustomSelect>
+                      </SettingBlock>
+                      
+                      {/* 👇 사진 업로드 버튼 (새로운 필드) */}
+                      <SettingBlock>
+                          <label>사진 업로드</label>
+                          <ImageUploadContainer>
+                              <ImageUploadButton htmlFor="file-upload">
+                                📷 파일 선택
+                              </ImageUploadButton>
+                              <FileNameText>{selectedFile ? selectedFile.name : '선택된 파일 없음'}</FileNameText>
+                          </ImageUploadContainer>
+                      </SettingBlock>
+                  </ReferenceGrid>
               </OptionMenu>
             )}
                 <HiddenFileInput
@@ -165,7 +251,14 @@ const QuotePosterPage: React.FC = () => {
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTopic(e.target.value)}
               placeholder="당신의 현재 상태나 감정을 말해보세요 (예: 힘들고 지칠 때)"
             />
-            <PlusButton type="button" onClick={() => setShowOptions(!showOptions)}>
+            <PlusButton 
+              type="button" 
+              onClick={() => {
+                setShowOptions(!showOptions);
+                setIsRotated(!isRotated);
+              }}
+              $isRotated={isRotated}
+            >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24px" height="24px">
                 <path d="M12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5zm0-5c-.828 0-1.5.672-1.5 1.5s.672 1.5 1.5 1.5 1.5-.672 1.5-1.5-.672-1.5-1.5-1.5zM19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.09-.74-1.71-.98L14.8 2.18c-.06-.25-.29-.4-.54-.4h-4c-.25 0-.48.15-.54.4L9.1 4.5c-.62.24-1.19.58-1.71.98l-2.49-1c-.22-.08-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.65c-.04.32-.07.64-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.09.74 1.71.98l.37 2.32c.06.25.29.4.54.4h4c.25 0 .48-.15.54-.4l.37-2.32c.62-.24 1.19-.58 1.71-.98l2.49 1c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65z"/>
               </svg>
@@ -365,7 +458,7 @@ const QuotePosterPage: React.FC = () => {
               position: relative; /* 옵션 메뉴를 InputWrapper 기준으로 띄우기 위해 추가 */
             `;
             
-            const PlusButton = styled.button`
+            const PlusButton = styled.button<{ $isRotated?: boolean }>`
               width: 38px;
               height: 38px;
               border-radius: 999px;
@@ -379,74 +472,150 @@ const QuotePosterPage: React.FC = () => {
               display: flex;
               align-items: center;
               justify-content: center;
-              transition: background 0.2s;
+              transition: background 0.2s, transform 0.3s ease;
+              transform: ${({ $isRotated }) => ($isRotated ? 'rotate(90deg)' : 'rotate(0deg)')};
             `;
             
             const HiddenFileInput = styled.input`
               display: none;
             `;
+
+            const Divider = styled.hr`
+              border: none;
+              border-top: 1px solid #e9ecef;
+              margin: 0 16px;
+            `;
             
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const ReferenceGrid = styled.div`
+              display: grid;
+              grid-template-columns: repeat(3, 1fr);
+              gap: 16px;
+              padding: 16px;
+            `;
+            
+            const SettingBlock = styled.div`
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+            
+              label {
+                font-size: 14px;
+                font-weight: 600;
+                color: #495057;
+              }
+            
+              input, select {
+                width: 100%;
+                max-width: 200px; /* 입력 및 선택 필드의 최대 너비 설정 */
+                padding: 10px 14px;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
+                font-size: 14px;
+                background-color: #fff;
+                transition: border-color 0.2s, box-shadow 0.2s;
+
+                &:focus {
+                  outline: none;
+                  border-color: #4c82f7;
+                  box-shadow: 0 0 0 3px rgba(76, 130, 247, 0.2);
+                }
+              }
+            `;
+            
+            const CustomSelect = styled.select`
+              /* Add any custom select styles here if needed */
+            `;
+            
+            const ColorInputWrapper = styled.div`
+              display: flex;
+              align-items: center;
+              gap: 8px;
+
+              input[type="color"] {
+                width: 40px;
+                height: 40px;
+                padding: 0;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                background: none;
+
+                &::-webkit-color-swatch-wrapper {
+                  padding: 0;
+                }
+                &::-webkit-color-swatch {
+                  border: 1px solid #dee2e6;
+                  border-radius: 4px;
+                }
+              }
+            `;
+
+            const ColorDisplay = styled.span`
+              padding: 8px 12px;
+              border: 1px solid #dee2e6;
+              border-radius: 8px;
+              font-size: 14px;
+              color: #495057;
+              min-width: 90px;
+              text-align: center;
+            `;
+            
+            const ImageUploadContainer = styled.div`
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            `;
+            
             const ImageUploadButton = styled.label`
               display: flex;
               align-items: center;
               justify-content: center;
-              gap: 4px;
-            
-              height: 38px; /* PlusButton과 동일한 높이 */
-              padding: 0 12px;
-              border-radius: 999px;
+              gap: 8px;
+              height: 40px;
+              padding: 0 16px;
+              border-radius: 8px;
               border: none;
-              font-size: 18px;
-              font-weight: 500;
+              font-size: 14px;
+              font-weight: 600;
               cursor: pointer;
-              flex-shrink: 0;
-              transition: background 0.2s;
-            
+              transition: background-color 0.2s, box-shadow 0.2s;
+              background-color: #fff;
+              color: #495057;
+              border: 1px solid #dee2e6;
+
               &:hover {
-                background: #d4e0ff;
+                background-color: #f1f3f5;
+              }
+
+              &:active {
+                background-color: #e9ecef;
+                box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
               }
             `;
             
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const FileNameText = styled.span`
-                font-size: 12px;
-                color: #4b8fff;
-                max-width: 80px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-                margin-left: 4px;
+              font-size: 12px;
+              color: #4b8fff;
+              max-width: 100px;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
             `;
             
             const OptionMenu = styled.div`
               position: absolute;
               top: 100%; /* InputWrapper 바로 아래에 배치 */
               left: 0;
+              right: 0;
               z-index: 10;
-              margin-top: 8px; /* InputWrapper와의 간격 */
-              background: white;
-              border-radius: 12px;
-              box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-              padding: 8px 0;
-              min-width: 120px;
+              margin-top: 12px; /* InputWrapper와의 간격 */
+              background: #f8f9fa;
+              border-radius: 16px;
+              box-shadow: 0 12px 36px rgba(0, 0, 0, 0.1);
+              padding: 16px;
+              min-width: 550px;
               text-align: left;
-            `;
-            
-            const OptionItem = styled.button<{ $isActive?: boolean }>`
-              width: 100%;
-              padding: 8px 12px;
-              background: ${({ $isActive }) => ($isActive ? "#e8f0ff" : "transparent")};
-              border: none;
-              text-align: left;
-              cursor: pointer;
-              color: #233;
-              font-size: 14px;
-              transition: background 0.12s ease;
-            
-              &:hover {
-                background: #d4e0ff;
-              }
+              border: 1px solid #e9ecef;
             `;
             
             const TextInput = styled.input`
